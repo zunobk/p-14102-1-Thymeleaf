@@ -15,18 +15,47 @@ import org.springframework.web.bind.annotation.ResponseBody;
 public class PostController {
     private final PostService postService;
 
-    @GetMapping("/posts/write")
-    @ResponseBody
-    public String showWrite() {
+    private String getWriteFormHtml() {
+        return getWriteFormHtml("", "", "", "");
+    }
+
+    private String getWriteFormHtml(
+            String errorFieldName,
+            String errorMessage,
+            String title,
+            String content
+    ) {
         return """
+                <div style="color: red;">%s</div>
+                
                 <form method="POST" action="doWrite">
-                  <input type="text" name="title" placeholder="제목" value="안녕">
+                  <input type="text" name="title" placeholder="제목" value="%s" autofocus>
                   <br>
-                  <textarea name="content" placeholder="내용">반가워.</textarea>
+                  <textarea name="content" placeholder="내용">%s</textarea>
                   <br>
                   <input type="submit" value="작성">
                 </form>
-                """;
+                
+                <script>
+                const errorFieldName = '%s';
+                
+                if ( errorFieldName.length > 0 )
+                {
+                    // 현재까지 나온 모든 폼 검색
+                    const forms = document.querySelectorAll('form');
+                    // 그 중에서 가장 마지막 폼 1개 찾기
+                    const lastForm = forms[forms.length - 1];
+                    
+                    lastForm[errorFieldName].focus();
+                }
+                </script>
+                """.formatted(errorMessage, title, content, errorFieldName);
+    }
+
+    @GetMapping("/posts/write")
+    @ResponseBody
+    public String showWrite() {
+        return getWriteFormHtml();
     }
 
     @PostMapping("/posts/doWrite")
@@ -36,8 +65,8 @@ public class PostController {
             @RequestParam(defaultValue = "") String title,
             @RequestParam(defaultValue = "") String content
     ) {
-        if (title.isBlank()) return "제목을 입력해주세요.";
-        if (content.isBlank()) return "내용을 입력해주세요.";
+        if (title.isBlank()) return getWriteFormHtml("title", "제목을 입력해주세요.", title, content);
+        if (content.isBlank()) return getWriteFormHtml("content", "내용을 입력해주세요.", title, content);
 
         Post post = postService.write(title, content);
 
