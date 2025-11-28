@@ -2,12 +2,18 @@ package com.back.domain.post.post.controller;
 
 import com.back.domain.post.post.entity.Post;
 import com.back.domain.post.post.service.PostService;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 @Controller
@@ -45,7 +51,7 @@ public class PostController {
                     const forms = document.querySelectorAll('form');
                     // 그 중에서 가장 마지막 폼 1개 찾기
                     const lastForm = forms[forms.length - 1];
-                    
+                
                     lastForm[errorFieldName].focus();
                 }
                 </script>
@@ -58,17 +64,35 @@ public class PostController {
         return getWriteFormHtml();
     }
 
+
+    @AllArgsConstructor
+    @Getter
+    public static class WriteForm {
+        @NotBlank(message = "제목을 입력해주세요.")
+        @Size(min = 2, max = 20, message = "제목은 2자 이상, 20자 이하로 입력가능합니다.")
+        private String title;
+        @NotBlank(message = "내용을 입력해주세요.")
+        @Size(min = 2, max = 20, message = "내용은 2자 이상, 20자 이하로 입력가능합니다.")
+        private String content;
+    }
+
     @PostMapping("/posts/doWrite")
     @ResponseBody
     @Transactional
     public String write(
-            @RequestParam(defaultValue = "") String title,
-            @RequestParam(defaultValue = "") String content
+            @Valid WriteForm form,
+            BindingResult bindingResult
     ) {
-        if (title.isBlank()) return getWriteFormHtml("title", "제목을 입력해주세요.", title, content);
-        if (content.isBlank()) return getWriteFormHtml("content", "내용을 입력해주세요.", title, content);
+        if (bindingResult.hasErrors()) {
+            FieldError fieldError = bindingResult.getFieldError();
 
-        Post post = postService.write(title, content);
+            String errorFieldName = fieldError.getField();
+            String errorMessage = fieldError.getDefaultMessage();
+
+            return getWriteFormHtml(errorFieldName, errorMessage, form.getTitle(), form.getContent());
+        }
+
+        Post post = postService.write(form.getTitle(), form.getContent());
 
         return "%d번 글이 생성되었습니다.".formatted(post.getId());
     }
